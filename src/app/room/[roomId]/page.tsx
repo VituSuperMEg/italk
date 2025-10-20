@@ -57,7 +57,11 @@ export default function RoomPage() {
           pendingInitiate.current.clear();
         }
       })
-      .catch(() => {})
+      .catch((e) => {
+        console.log("[client] getUserMedia failed:", e);
+        // Set ready even if media fails, so we can still try WebRTC
+        setReadyToCall(true);
+      })
       .finally(() => {});
     return () => {
       cancelled = true;

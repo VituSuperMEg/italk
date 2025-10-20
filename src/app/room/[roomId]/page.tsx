@@ -91,9 +91,14 @@ export default function RoomPage() {
       // I am the newcomer; I initiate offers to existing peers only here
       list.forEach((p) => {
         if (!pcByPeer.current.has(p.id)) {
-          console.log(`[client] initiating connection to peer ${p.id}`);
-          if (readyToCall) createPeer(p.id, true);
-          else pendingInitiate.current.add(p.id);
+          console.log(`[client] initiating connection to peer ${p.id}, readyToCall: ${readyToCall}`);
+          if (readyToCall) {
+            console.log(`[client] calling createPeer for ${p.id}`);
+            createPeer(p.id, true);
+          } else {
+            console.log(`[client] adding ${p.id} to pending list`);
+            pendingInitiate.current.add(p.id);
+          }
         }
       });
     });

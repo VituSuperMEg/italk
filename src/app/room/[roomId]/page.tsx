@@ -22,7 +22,7 @@ export default function RoomPage() {
   const pendingCandidates = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const streamRef = useRef<MediaStream | null>(null);
   const [peers, setPeers] = useState<Peer[]>([]);
-  const [readyToCall, setReadyToCall] = useState(false);
+  const [readyToCall, setReadyToCall] = useState(true); // Force ready to call
   const pendingInitiate = useRef<Set<string>>(new Set());
   const [diag, setDiag] = useState<{ connected: number; remoteAudio: number }>(
     { connected: 0, remoteAudio: 0 }
@@ -32,23 +32,21 @@ export default function RoomPage() {
   const [pos, setPos] = useState({ x: 100, y: 100 });
   const [keys, setKeys] = useState<Record<string, boolean>>({});
 
-  // Setup media
+  // Setup media - simplified
   useEffect(() => {
     let cancelled = false;
     navigator.mediaDevices
-      // always acquire audio so a track exists; enable/disable via flags
       .getUserMedia({ audio: true, video: cam })
       .then((stream) => {
         if (cancelled) return;
         streamRef.current = stream;
-        // ensure initial enabled flags reflect query
         stream.getAudioTracks().forEach((t) => (t.enabled = !!mic));
         stream.getVideoTracks().forEach((t) => (t.enabled = cam));
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
           localVideoRef.current.play().catch(() => {});
         }
-        setReadyToCall(true);
+        console.log("[client] media ready, processing pending connections");
         // process any deferred initiations
         if (pendingInitiate.current.size) {
           for (const id of Array.from(pendingInitiate.current)) {
@@ -59,10 +57,8 @@ export default function RoomPage() {
       })
       .catch((e) => {
         console.log("[client] getUserMedia failed:", e);
-        // Set ready even if media fails, so we can still try WebRTC
-        setReadyToCall(true);
-      })
-      .finally(() => {});
+        // Continue anyway - we'll try to connect without local media
+      });
     return () => {
       cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());

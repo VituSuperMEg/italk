@@ -199,7 +199,7 @@ export default function RoomPage() {
       if (!audio) {
         audio = document.createElement("audio");
         audio.autoplay = true;
-        // @ts-expect-error playsInline exists on HTMLMediaElement in browsers
+        // @ts-expect-error playsInline exists on HTMLMediaElement in browsers11
         audio.playsInline = true;
         audio.muted = false;
         // will remain muted until a click gesture occurs; volume adjusted by proximity

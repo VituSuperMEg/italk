@@ -22,6 +22,7 @@ const io = new Server(httpServer, {
 io.on("connection", (socket) => {
   console.log(`[socket] client connected: ${socket.id}`);
   socket.on("join", ({ roomId, displayName }) => {
+    console.log(`[server] client ${socket.id} joining room ${roomId} as ${displayName}`);
     socket.data.displayName = displayName;
     socket.join(roomId);
     socket.to(roomId).emit("peer-joined", { id: socket.id, displayName });
@@ -32,6 +33,7 @@ io.on("connection", (socket) => {
         const s = io.sockets.sockets.get(id);
         return { id, displayName: s?.data?.displayName || "" };
       });
+    console.log(`[server] sending peers list to ${socket.id}:`, peers);
     socket.emit("peers", peers);
   });
 

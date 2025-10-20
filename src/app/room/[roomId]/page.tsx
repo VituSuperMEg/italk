@@ -73,6 +73,7 @@ export default function RoomPage() {
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      console.log("[client] connected to signaling server");
       socket.emit("join", { roomId, displayName });
     });
 
@@ -188,10 +189,12 @@ export default function RoomPage() {
     };
 
     pc.onconnectionstatechange = () => {
+      console.log(`[webrtc] connection state for ${peerId}:`, pc.connectionState);
       setDiag((d) => ({ ...d, connected: Array.from(pcByPeer.current.values()).filter(p => p.connectionState === "connected").length }));
     };
 
     pc.ontrack = (ev) => {
+      console.log(`[webrtc] received track from ${peerId}:`, ev.streams[0]);
       let audio = remoteAudioByPeer.current.get(peerId);
       if (!audio) {
         audio = document.createElement("audio");
@@ -202,11 +205,16 @@ export default function RoomPage() {
         // will remain muted until a click gesture occurs; volume adjusted by proximity
         (remoteContainerRef.current ?? document.body).appendChild(audio);
         remoteAudioByPeer.current.set(peerId, audio);
+        console.log(`[webrtc] created audio element for ${peerId}`);
       }
       audio.srcObject = ev.streams[0];
       // try to start playback immediately (may be blocked until unlock)
       audio.volume = 1;
-      audio.play().catch(() => {});
+      audio.play().then(() => {
+        console.log(`[webrtc] audio playing for ${peerId}`);
+      }).catch((e) => {
+        console.log(`[webrtc] audio play failed for ${peerId}:`, e);
+      });
       setDiag((d) => ({ ...d, remoteAudio: remoteAudioByPeer.current.size }));
 
       // Optional: attach a hidden video to ensure video pipeline is active

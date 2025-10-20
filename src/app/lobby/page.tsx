@@ -27,8 +27,9 @@ export default function LobbyPage() {
         }
         stream.getAudioTracks().forEach((t) => (t.enabled = enableMic));
         stream.getVideoTracks().forEach((t) => (t.enabled = enableCam));
-      } catch (e: any) {
-        setError(e?.message || "Falha ao acessar dispositivos");
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg || "Falha ao acessar dispositivos");
       }
     }
     setupPreview();

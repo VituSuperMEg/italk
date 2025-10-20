@@ -78,17 +78,22 @@ export default function RoomPage() {
     });
 
     socket.on("peers", (list: Peer[]) => {
+      console.log("[client] received peers list:", list);
       setPeers(list);
       // I am the newcomer; I initiate offers to existing peers only here
       list.forEach((p) => {
         if (!pcByPeer.current.has(p.id)) {
+          console.log(`[client] initiating connection to peer ${p.id}`);
           if (readyToCall) createPeer(p.id, true);
           else pendingInitiate.current.add(p.id);
         }
       });
     });
     // Existing peers should NOT initiate; they will just respond when they receive an offer
-    socket.on("peer-joined", (peer: Peer) => setPeers((p) => [...p, peer]));
+    socket.on("peer-joined", (peer: Peer) => {
+      console.log("[client] peer joined:", peer);
+      setPeers((p) => [...p, peer]);
+    });
     socket.on("peer-left", ({ id }: { id: string }) => {
       setPeers((prev) => prev.filter((p) => p.id !== id));
       const pc = pcByPeer.current.get(id);
@@ -156,6 +161,7 @@ export default function RoomPage() {
   }, [roomId, displayName]);
 
   function createPeer(peerId: string, isInitiator: boolean) {
+    console.log(`[webrtc] creating peer connection to ${peerId}, initiator: ${isInitiator}`);
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },

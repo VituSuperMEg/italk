@@ -7,13 +7,15 @@ const httpServer = createServer((req, res) => {
     res.end("ok");
     return;
   }
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("socket server");
+  // For any other path (like /socket.io), do NOT write a response here.
+  // Let Socket.IO handle the request to ensure proper CORS headers.
 });
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: ["https://italk-lac.vercel.app", "http://localhost:4000", "http://localhost:3000"],
+    methods: ["GET", "POST"],
   },
+  transports: ["websocket", "polling"],
 });
 
 io.on("connection", (socket) => {

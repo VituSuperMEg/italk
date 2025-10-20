@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: italk-signal
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server/socket.js
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+

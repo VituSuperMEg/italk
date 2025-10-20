@@ -41,7 +41,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const port = process.env.SIGNAL_PORT ? Number(process.env.SIGNAL_PORT) : 4001;
+const port = process.env.PORT ? Number(process.env.PORT) : (process.env.SIGNAL_PORT ? Number(process.env.SIGNAL_PORT) : 4001);
 httpServer.listen(port, () => {
   console.log(`[socket] signaling server listening on ${port}`);
 });

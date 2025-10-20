@@ -68,7 +68,8 @@ export default function RoomPage() {
 
   // Socket + signaling
   useEffect(() => {
-    const socket = io("http://localhost:4001");
+    const signalUrl = process.env.NEXT_PUBLIC_SIGNAL_URL || "http://localhost:4001";
+    const socket = io(signalUrl);
     socketRef.current = socket;
 
     socket.on("connect", () => {

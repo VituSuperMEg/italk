@@ -74,7 +74,11 @@ export default function RoomPage() {
 
     socket.on("connect", () => {
       console.log("[client] connected to signaling server");
-      socket.emit("join", { roomId, displayName });
+      // Small delay to ensure connection is fully established
+      setTimeout(() => {
+        console.log("[client] emitting join event");
+        socket.emit("join", { roomId, displayName });
+      }, 100);
     });
 
     socket.on("peers", (list: Peer[]) => {

@@ -12,13 +12,15 @@ const httpServer = createServer((req, res) => {
 });
 const io = new Server(httpServer, {
   cors: {
-    origin: ["https://italk-lac.vercel.app", "http://localhost:4000", "http://localhost:3000"],
+    origin: "*",
     methods: ["GET", "POST"],
+    credentials: false,
   },
   transports: ["websocket", "polling"],
 });
 
 io.on("connection", (socket) => {
+  console.log(`[socket] client connected: ${socket.id}`);
   socket.on("join", ({ roomId, displayName }) => {
     socket.data.displayName = displayName;
     socket.join(roomId);
@@ -44,6 +46,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnecting", () => {
+    console.log(`[socket] client disconnecting: ${socket.id}`);
     for (const roomId of socket.rooms) {
       if (roomId === socket.id) continue;
       socket.to(roomId).emit("peer-left", { id: socket.id });

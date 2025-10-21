@@ -453,7 +453,7 @@ export default function RoomPage() {
   const peersCount = useMemo(() => peers.length, [peers]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800">
+    <div className="fixed inset-0 h-screen w-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 overflow-auto">
       {/* Header */}
       <div className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700/50">
         <div className="flex items-center justify-between p-4">
@@ -489,7 +489,7 @@ export default function RoomPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 flex flex-col">
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 h-full">
           {/* Canvas Area */}
           <div className="bg-gray-800/30 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">

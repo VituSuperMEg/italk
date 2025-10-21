@@ -47,6 +47,17 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("peer-pos", { id: socket.id, x, y });
   });
 
+  // Chat message relay
+  socket.on("chat-message", ({ roomId, message, from }) => {
+    console.log(`[server] chat message from ${socket.id} in room ${roomId}: ${message}`);
+    // broadcast to all others in the same room
+    socket.to(roomId).emit("chat-message", { 
+      from, 
+      message, 
+      timestamp: Date.now() 
+    });
+  });
+
   socket.on("disconnecting", () => {
     console.log(`[socket] client disconnecting: ${socket.id}`);
     for (const roomId of socket.rooms) {

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { Mic, MicOff, Video, VideoOff, Users, Volume2 } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, Users, Volume2, MessageCircle, Send, X } from "lucide-react";
 
 type Peer = { id: string; displayName: string };
 
@@ -38,6 +38,17 @@ export default function RoomPage() {
   const [camEnabled, setCamEnabled] = useState(cam);
   const [userEmoji, setUserEmoji] = useState("");
   const [peerEmojis, setPeerEmojis] = useState<Map<string, string>>(new Map());
+  
+  // Chat states
+  const [messages, setMessages] = useState<Array<{
+    id: string;
+    from: string;
+    fromId: string;
+    message: string;
+    timestamp: number;
+  }>>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [showChat, setShowChat] = useState(false);
 
   // Basic movement state
   const [pos, setPos] = useState({ x: 100, y: 100 });
@@ -303,6 +314,18 @@ export default function RoomPage() {
       peerPos.current.set(id, { x, y });
     });
 
+    // Chat messages
+    socket.on("chat-message", ({ from, message, timestamp }: { from: string; message: string; timestamp: number }) => {
+      const chatMessage = {
+        id: `${from}-${timestamp}`,
+        from,
+        fromId: "peer",
+        message,
+        timestamp
+      };
+      setMessages(prev => [...prev, chatMessage]);
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -332,10 +355,12 @@ export default function RoomPage() {
     function frame() {
       setPos((old) => {
         let { x, y } = old;
-        if (keys["w"]) y -= speed;
-        if (keys["s"]) y += speed;
-        if (keys["a"]) x -= speed;
-        if (keys["d"]) x += speed;
+        if (!showChat) {
+          if (keys["w"]) y -= speed;
+          if (keys["s"]) y += speed;
+          if (keys["a"]) x -= speed;
+          if (keys["d"]) x += speed;
+        }
         return { x, y };
       });
       // draw
@@ -400,7 +425,7 @@ export default function RoomPage() {
     }
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [keys, pos.x, pos.y, userEmoji, peerEmojis, peers, displayName]);
+  }, [keys, pos.x, pos.y, userEmoji, peerEmojis, peers, displayName, showChat]);
 
   // Double click to move
   function handleDblClick(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -449,6 +474,34 @@ export default function RoomPage() {
     streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = newState));
   }
 
+  // Chat functions
+  function sendMessage() {
+    if (!newMessage.trim() || !socketRef.current) return;
+    
+    const message = {
+      id: Date.now().toString(),
+      from: displayName || "Você",
+      fromId: "me",
+      message: newMessage.trim(),
+      timestamp: Date.now()
+    };
+    
+    setMessages(prev => [...prev, message]);
+    socketRef.current.emit("chat-message", {
+      roomId,
+      message: newMessage.trim(),
+      from: displayName || "Você"
+    });
+    setNewMessage("");
+  }
+
+  function handleKeyPress(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
 
   const peersCount = useMemo(() => peers.length, [peers]);
 
@@ -474,6 +527,14 @@ export default function RoomPage() {
               <Users className="w-4 h-4" />
               <span>{peersCount + 1} participantes</span>
             </div>
+            
+            <button 
+              onClick={() => setShowChat(!showChat)}
+              className="flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Chat
+            </button>
             
             {!audioUnlocked && (
               <button 
@@ -622,6 +683,82 @@ export default function RoomPage() {
           </div>
         </div>
       </div>
+
+      {/* Chat Panel */}
+      {showChat && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-800 rounded-2xl border border-gray-700/50 w-full max-w-md h-[600px] flex flex-col">
+            {/* Chat Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-700/50">
+              <h3 className="text-white font-medium">Chat da Sala</h3>
+              <button 
+                onClick={() => setShowChat(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {messages.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>Nenhuma mensagem ainda</p>
+                  <p className="text-sm">Seja o primeiro a enviar uma mensagem!</p>
+                </div>
+              ) : (
+                messages.map((msg) => (
+                  <div 
+                    key={msg.id} 
+                    className={`flex ${msg.fromId === "me" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div className={`max-w-[80%] p-3 rounded-lg ${
+                      msg.fromId === "me" 
+                        ? "bg-blue-600 text-white" 
+                        : "bg-gray-700 text-gray-100"
+                    }`}>
+                      {msg.fromId !== "me" && (
+                        <div className="text-xs text-gray-300 mb-1">{msg.from}</div>
+                      )}
+                      <div className="text-sm">{msg.message}</div>
+                      <div className={`text-xs mt-1 ${
+                        msg.fromId === "me" ? "text-blue-200" : "text-gray-400"
+                      }`}>
+                        {new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* Message Input */}
+            <div className="p-4 border-t border-gray-700/50">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Digite sua mensagem..."
+                  className="flex-1 bg-gray-700 text-white placeholder-gray-400 px-3 py-2 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!newMessage.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden container for remote audio */}
       <div ref={remoteContainerRef} className="hidden" />

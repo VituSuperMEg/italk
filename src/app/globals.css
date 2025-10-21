@@ -44,5 +44,16 @@ body {
   bottom: 0;
   width: 100vw;
   height: 100vh;
-  z-index: -1;
+  z-index: 0;
+}
+
+/* Garantir que botões sejam clicáveis */
+button {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Garantir que elementos interativos tenham prioridade */
+.z-20 {
+  pointer-events: auto;
 }

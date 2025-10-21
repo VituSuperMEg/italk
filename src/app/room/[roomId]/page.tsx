@@ -604,7 +604,7 @@ export default function RoomPage() {
   return (
     <div className="absolute inset-0 min-h-screen w-full bg-gradient-to-br from-gray-900 via-black to-gray-800 full-screen-bg">
       {/* Header */}
-      <div className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700/50">
+      <div className="relative z-10 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700/50">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -631,7 +631,7 @@ export default function RoomPage() {
                   setUnreadGeneralMessages(0);
                 }
               }}
-              className="relative flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+              className="relative z-20 flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
             >
               <MessageCircle className="w-4 h-4" />
               Chat
@@ -645,7 +645,7 @@ export default function RoomPage() {
             {!audioUnlocked && (
               <button 
                 onClick={unlockAudio}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                className="relative z-20 flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 <Volume2 className="w-4 h-4" />
                 Habilitar áudio
@@ -656,7 +656,7 @@ export default function RoomPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 flex flex-col">
+      <div className="relative z-10 flex-1 p-4 flex flex-col">
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 flex-1">
           {/* Canvas Area */}
           <div className="bg-gray-800/30 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden h-[90vh]">
@@ -677,7 +677,7 @@ export default function RoomPage() {
                 height={500}
                 onClick={handleCanvasClick}
                 onDoubleClick={handleDblClick}
-                className="w-full h-[90vh] bg-gray-900 cursor-crosshair"
+                className="w-full h-[90vh] bg-gray-900 cursor-crosshair relative z-0"
               />
             </div>
           </div>

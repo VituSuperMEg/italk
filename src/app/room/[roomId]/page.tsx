@@ -578,22 +578,45 @@ export default function RoomPage() {
               </div>
             </div>
 
-            {/* Status da Conexão */}
+            {/* Participantes na Sala */}
             <div className="bg-gray-800/30 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-4">
-              <h3 className="text-white font-medium text-sm mb-3">Status</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Conexões ativas:</span>
-                  <span className="text-green-400 font-medium">{diag.connected}</span>
+              <h3 className="text-white font-medium text-sm mb-3">Participantes na Sala</h3>
+              <div className="space-y-2">
+                {/* Você mesmo */}
+                <div className="flex items-center gap-3 p-2 bg-gray-700/30 rounded-lg">
+                  <div className="text-2xl">{userEmoji}</div>
+                  <div className="flex-1">
+                    <div className="text-white text-sm font-medium">{displayName || "Você"}</div>
+                    <div className="text-gray-400 text-xs">Você</div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {micEnabled && <Mic className="w-3 h-3 text-green-400" />}
+                    {camEnabled && <Video className="w-3 h-3 text-green-400" />}
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Áudio remoto:</span>
-                  <span className="text-blue-400 font-medium">{diag.remoteAudio}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Participantes:</span>
-                  <span className="text-purple-400 font-medium">{peersCount + 1}</span>
-                </div>
+                
+                {/* Outros participantes */}
+                {peers.map((peer) => {
+                  const emoji = peerEmojis.get(peer.id);
+                  return (
+                    <div key={peer.id} className="flex items-center gap-3 p-2 bg-gray-700/30 rounded-lg">
+                      <div className="text-2xl">{emoji}</div>
+                      <div className="flex-1">
+                        <div className="text-white text-sm font-medium">{peer.displayName}</div>
+                        <div className="text-gray-400 text-xs">Participante</div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {peers.length === 0 && (
+                  <div className="text-center py-4">
+                    <div className="text-gray-500 text-sm">Apenas você na sala</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

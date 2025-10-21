@@ -49,6 +49,20 @@ export default function RoomPage() {
   }>>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showChat, setShowChat] = useState(false);
+  
+  // Private chat states
+  const [privateMessages, setPrivateMessages] = useState<Map<string, Array<{
+    id: string;
+    from: string;
+    fromId: string;
+    message: string;
+    timestamp: number;
+  }>>>(new Map());
+  const [showPrivateChat, setShowPrivateChat] = useState(false);
+  const [selectedPeer, setSelectedPeer] = useState<Peer | null>(null);
+  const [newPrivateMessage, setNewPrivateMessage] = useState("");
+  const [unreadGeneralMessages, setUnreadGeneralMessages] = useState(0);
+  const [unreadPrivateCounts, setUnreadPrivateCounts] = useState<Map<string, number>>(new Map());
 
   // Basic movement state
   const [pos, setPos] = useState({ x: 100, y: 100 });
@@ -324,12 +338,45 @@ export default function RoomPage() {
         timestamp
       };
       setMessages(prev => [...prev, chatMessage]);
+      
+      // Incrementar contador de mensagens não lidas se o chat não estiver aberto
+      if (!showChat) {
+        setUnreadGeneralMessages(prev => prev + 1);
+      }
+    });
+
+    // Private messages
+    socket.on("private-message", ({ from, message, timestamp, fromId }: { from: string; message: string; timestamp: number; fromId: string }) => {
+      const privateMessage = {
+        id: `${fromId}-${timestamp}`,
+        from,
+        fromId: "peer",
+        message,
+        timestamp
+      };
+      
+      setPrivateMessages(prev => {
+        const newMap = new Map(prev);
+        const existingMessages = newMap.get(fromId) || [];
+        newMap.set(fromId, [...existingMessages, privateMessage]);
+        return newMap;
+      });
+      
+      // Notificação já é gerenciada pelo contador abaixo
+      
+      // Incrementar contador específico para este peer
+      setUnreadPrivateCounts(prev => {
+        const newMap = new Map(prev);
+        const currentCount = newMap.get(fromId) || 0;
+        newMap.set(fromId, currentCount + 1);
+        return newMap;
+      });
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [roomId, displayName, readyToCall, createPeer]);
+  }, [roomId, displayName, readyToCall, createPeer, showChat]);
 
   // Removed peers-driven initiator effect to avoid glare
 
@@ -502,6 +549,55 @@ export default function RoomPage() {
     }
   }
 
+  // Private chat functions
+  function openPrivateChat(peer: Peer) {
+    setSelectedPeer(peer);
+    setShowPrivateChat(true);
+    // Marcar mensagens como lidas (contador já é limpo abaixo)
+    // Limpar contador de mensagens não lidas para este peer
+    setUnreadPrivateCounts(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(peer.id);
+      return newMap;
+    });
+  }
+
+  function sendPrivateMessage() {
+    if (!newPrivateMessage.trim() || !socketRef.current || !selectedPeer) return;
+    
+    const message = {
+      id: Date.now().toString(),
+      from: displayName || "Você",
+      fromId: "me",
+      message: newPrivateMessage.trim(),
+      timestamp: Date.now()
+    };
+    
+    // Adicionar mensagem ao chat privado
+    const peerId = selectedPeer.id;
+    setPrivateMessages(prev => {
+      const newMap = new Map(prev);
+      const existingMessages = newMap.get(peerId) || [];
+      newMap.set(peerId, [...existingMessages, message]);
+      return newMap;
+    });
+    
+    socketRef.current.emit("private-message", {
+      roomId,
+      targetId: selectedPeer.id,
+      message: newPrivateMessage.trim(),
+      from: displayName || "Você"
+    });
+    setNewPrivateMessage("");
+  }
+
+  function handlePrivateKeyPress(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendPrivateMessage();
+    }
+  }
+
 
   const peersCount = useMemo(() => peers.length, [peers]);
 
@@ -529,11 +625,21 @@ export default function RoomPage() {
             </div>
             
             <button 
-              onClick={() => setShowChat(!showChat)}
-              className="flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+              onClick={() => {
+                setShowChat(!showChat);
+                if (!showChat) {
+                  setUnreadGeneralMessages(0);
+                }
+              }}
+              className="relative flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
             >
               <MessageCircle className="w-4 h-4" />
               Chat
+              {unreadGeneralMessages > 0 && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold">
+                  {unreadGeneralMessages > 99 ? '99+' : unreadGeneralMessages}
+                </div>
+              )}
             </button>
             
             {!audioUnlocked && (
@@ -666,7 +772,19 @@ export default function RoomPage() {
                         <div className="text-white text-sm font-medium">{peer.displayName}</div>
                         <div className="text-gray-400 text-xs">Participante</div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openPrivateChat(peer)}
+                          className="relative p-1 text-gray-400 hover:text-blue-400 transition-colors"
+                          title="Enviar mensagem privada"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          {unreadPrivateCounts.has(peer.id) && unreadPrivateCounts.get(peer.id)! > 0 && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                              {unreadPrivateCounts.get(peer.id)! > 99 ? '99+' : unreadPrivateCounts.get(peer.id)}
+                            </div>
+                          )}
+                        </button>
                         <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                       </div>
                     </div>
@@ -751,6 +869,88 @@ export default function RoomPage() {
                   onClick={sendMessage}
                   disabled={!newMessage.trim()}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Private Chat Panel */}
+      {showPrivateChat && selectedPeer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-800 rounded-2xl border border-gray-700/50 w-full max-w-md h-[600px] flex flex-col">
+            {/* Private Chat Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-700/50">
+              <div className="flex items-center gap-3">
+                <div className="text-2xl">{peerEmojis.get(selectedPeer.id)}</div>
+                <div>
+                  <h3 className="text-white font-medium">Chat com {selectedPeer.displayName}</h3>
+                  <p className="text-gray-400 text-xs">Mensagem privada</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPrivateChat(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Private Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {(!privateMessages.get(selectedPeer.id) || privateMessages.get(selectedPeer.id)?.length === 0) ? (
+                <div className="text-center text-gray-500 py-8">
+                  <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>Nenhuma mensagem privada ainda</p>
+                  <p className="text-sm">Inicie uma conversa com {selectedPeer.displayName}!</p>
+                </div>
+              ) : (
+                privateMessages.get(selectedPeer.id)?.map((msg) => (
+                  <div 
+                    key={msg.id} 
+                    className={`flex ${msg.fromId === "me" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div className={`max-w-[80%] p-3 rounded-lg ${
+                      msg.fromId === "me" 
+                        ? "bg-purple-600 text-white" 
+                        : "bg-gray-700 text-gray-100"
+                    }`}>
+                      {msg.fromId !== "me" && (
+                        <div className="text-xs text-gray-300 mb-1">{msg.from}</div>
+                      )}
+                      <div className="text-sm">{msg.message}</div>
+                      <div className={`text-xs mt-1 ${
+                        msg.fromId === "me" ? "text-purple-200" : "text-gray-400"
+                      }`}>
+                        {new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* Private Message Input */}
+            <div className="p-4 border-t border-gray-700/50">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newPrivateMessage}
+                  onChange={(e) => setNewPrivateMessage(e.target.value)}
+                  onKeyPress={handlePrivateKeyPress}
+                  placeholder={`Mensagem para ${selectedPeer.displayName}...`}
+                  className="flex-1 bg-gray-700 text-white placeholder-gray-400 px-3 py-2 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                />
+                <button
+                  onClick={sendPrivateMessage}
+                  disabled={!newPrivateMessage.trim()}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
                 >
                   <Send className="w-4 h-4" />
                 </button>

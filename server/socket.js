@@ -58,6 +58,18 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Private message relay
+  socket.on("private-message", ({ roomId, targetId, message, from }) => {
+    console.log(`[server] private message from ${socket.id} to ${targetId}: ${message}`);
+    // send to specific target user
+    socket.to(targetId).emit("private-message", { 
+      from, 
+      message, 
+      timestamp: Date.now(),
+      fromId: socket.id
+    });
+  });
+
   socket.on("disconnecting", () => {
     console.log(`[socket] client disconnecting: ${socket.id}`);
     for (const roomId of socket.rooms) {
